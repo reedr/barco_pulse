@@ -10,7 +10,7 @@ from .const import MANUFACTURER, Barco_CONNECT_TIMEOUT, Barco_LOGIN_TIMEOUT, Bar
 
 _LOGGER = logging.getLogger(__name__)
 
-DEVICE_SYSTEM_STATE = "system.state"
+DEVICE_SYSTEM_STATE = "system.targetstate"
 DEVICE_INLET_T = "environment.temperature.inlet.value"
 DEVICE_OUTLET_T = "environment.temperature.outlet.value"
 DEVICE_LASER_STATUS = "illumination.sources.laser.status"
@@ -36,17 +36,14 @@ PROPERTY_SUBS = [
     DEVICE_LASER_STATUS,
     DEVICE_HDMI_SIGNAL,
     DEVICE_OUTPUT_SIZE,
-    DEVICE_ILLUM_STATE
+    DEVICE_ILLUM_STATE,
 ]
+
 
 class BarcoDevice:
     """Represents a single Barco device."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        host: str
-    ) -> None:
+    def __init__(self, hass: HomeAssistant, host: str) -> None:
         """Set up class."""
 
         self._hass = hass
@@ -86,7 +83,6 @@ class BarcoDevice:
         """Return the sensor."""
         return self._data.get(name)
 
-
     async def open_connection(self, test: bool = False) -> bool:
         """Establish a connection."""
         if self.online:
@@ -99,7 +95,9 @@ class BarcoDevice:
                 timeout=Barco_CONNECT_TIMEOUT,
             )
             self._request_id = 1
-            self.send_request("property.get", {"property": [DEVICE_MODEL, DEVICE_SERIAL_NUM]})
+            self.send_request(
+                "property.get", {"property": [DEVICE_MODEL, DEVICE_SERIAL_NUM]}
+            )
             resp = await asyncio.wait_for(
                 self._reader.read(1000), timeout=Barco_LOGIN_TIMEOUT
             )
@@ -122,7 +120,7 @@ class BarcoDevice:
 
         return True
 
-    def send_request (self, method: str, params: dict) -> None:
+    def send_request(self, method: str, params: dict) -> None:
         """Format and send command."""
         req_id = self._request_id
         self._request_id += 1
@@ -133,7 +131,7 @@ class BarcoDevice:
         self._writer.write(reqstr.encode("ascii"))
         return req_id
 
-    def decode_response (self, resp: str) -> dict | None:
+    def decode_response(self, resp: str) -> dict | None:
         """Decode the json response."""
         try:
             _LOGGER.debug("<- %s", resp)
@@ -152,13 +150,13 @@ class BarcoDevice:
 
     async def send_command(self, method: str, params: str) -> int:
         """Make an API call."""
-        if await self.open_connection():
-            return self.send_request(method, params)
-        return -1
+        if not await self.open_connection():
+            return False
+        self.send_request(method, params)
+        return True
 
     async def update_data(self) -> bool:
         """Stuff that has to be polled."""
-        # return await self.send_command("environment.getcontrolblocks",{"type": "Sensor", "valuetype": "Temperature"})
         return True
 
     @property
@@ -168,18 +166,18 @@ class BarcoDevice:
 
     async def turn_on(self) -> bool:
         """Turn on the power."""
-        return self.send_command("system.poweron", "[]") > 0
+        return await self.send_command("system.poweron", "[]")
 
     async def turn_off(self) -> bool:
         """Turn on the power."""
-        return self.send_command("system.poweroff", "[]") > 0
+        return await self.send_command("system.poweroff", "[]")
 
     async def async_init(self, data_callback: callback) -> dict:
         """Query position and wait for response."""
-        await self.send_command("property.subscribe",{"property": PROPERTY_SUBS})
+        await self.send_command("property.subscribe", {"property": PROPERTY_SUBS})
         await asyncio.wait_for(self._init_event.wait(), timeout=Barco_LOGIN_TIMEOUT)
         self._callback = data_callback
-        await self.send_command("property.get",{"property": PROPERTY_SUBS})
+        await self.send_command("property.get", {"property": PROPERTY_SUBS})
         return self._data
 
     async def listener(self) -> None:
@@ -233,9 +231,9 @@ class BarcoDevice:
                 elif n in (DEVICE_INLET_T, DEVICE_OUTLET_T, DEVICE_MAINBOARD_T):
                     self._data[n] = (v / 5 * 9) + 32
                 elif n == DEVICE_ILLUM_STATE:
-                    self._data[DEVICE_ILLUM_ON] = (v == "On")
+                    self._data[DEVICE_ILLUM_ON] = v
                 elif n == DEVICE_LASER_STATUS:
-                    self._data[DEVICE_LASER_ON] = (v == "On")
+                    self._data[DEVICE_LASER_ON] = v
                     self._data[DEVICE_LASER_STATUS] = v
                 else:
                     self._data[n] = v
