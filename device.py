@@ -231,9 +231,9 @@ class BarcoDevice:
                 elif n in (DEVICE_INLET_T, DEVICE_OUTLET_T, DEVICE_MAINBOARD_T):
                     self._data[n] = (v / 5 * 9) + 32
                 elif n == DEVICE_ILLUM_STATE:
-                    self._data[DEVICE_ILLUM_ON] = v
+                    self._data[DEVICE_ILLUM_ON] = (v == "On")
                 elif n == DEVICE_LASER_STATUS:
-                    self._data[DEVICE_LASER_ON] = v
+                    self._data[DEVICE_LASER_ON] = (v == "On")
                     self._data[DEVICE_LASER_STATUS] = v
                 else:
                     self._data[n] = v
