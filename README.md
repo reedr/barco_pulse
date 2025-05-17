@@ -1,0 +1,1 @@
+# Home Assistant Integration for Stewart Barco Screen Masking Controller

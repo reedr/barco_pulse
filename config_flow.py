@@ -32,7 +32,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         data[CONF_HOST]
     )
     if await dev.test_connection():
-        return {"title": "Barco Pulse"}
+        return {"title": "Projectors"}
 
     raise CannotConnect
 

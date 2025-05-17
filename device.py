@@ -6,7 +6,7 @@ import logging
 
 from homeassistant.core import HomeAssistant, callback
 
-from .const import Barco_CONNECT_TIMEOUT, Barco_LOGIN_TIMEOUT, Barco_PORT
+from .const import MANUFACTURER, Barco_CONNECT_TIMEOUT, Barco_LOGIN_TIMEOUT, Barco_PORT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ DEVICE_SYSTEM_STATE = "system.state"
 DEVICE_INLET_T = "environment.temperature.inlet.value"
 DEVICE_OUTLET_T = "environment.temperature.outlet.value"
 DEVICE_LASER_STATUS = "illumination.sources.laser.status"
-DEVICE_LASER_ON = "laser_on"
+DEVICE_LASER_ON = "laser"
 DEVICE_HDMI_SIGNAL = "image.connector.hdmi.detectedsignal"
 DEVICE_OUTPUT_SIZE = "image.resolution.processing.size"
 DEVICE_INPUT_ACTIVE = "input_active"
@@ -24,7 +24,9 @@ DEVICE_OUTPUT_VRES = "output_vres"
 DEVICE_OUTPUT_RES = "output_res"
 DEVICE_MAINBOARD_T = "environment.temperature.mainboard.value"
 DEVICE_ILLUM_STATE = "illumination.state"
-DEVICE_ILLUM_ON = "illumination_on"
+DEVICE_ILLUM_ON = "illumination"
+DEVICE_MODEL = "system.modelname"
+DEVICE_SERIAL_NUM = "system.serialnumber"
 
 PROPERTY_SUBS = [
     DEVICE_SYSTEM_STATE,
@@ -49,7 +51,7 @@ class BarcoDevice:
 
         self._hass = hass
         self._host = host
-        self._device_id = f"Barco:{host}"
+        self._device_id = None
         self._reader: asyncio.StreamReader
         self._writer: asyncio.StreamWriter
         self._init_event = asyncio.Event()
@@ -97,17 +99,19 @@ class BarcoDevice:
                 timeout=Barco_CONNECT_TIMEOUT,
             )
             self._request_id = 1
-            self.send_request("property.get", {"property": [DEVICE_SYSTEM_STATE]})
+            self.send_request("property.get", {"property": [DEVICE_MODEL, DEVICE_SERIAL_NUM]})
             resp = await asyncio.wait_for(
                 self._reader.read(1000), timeout=Barco_LOGIN_TIMEOUT
             )
             result = self.decode_response(resp)
             if result is None:
                 return False
+            for prop, val in result["result"].items():
+                self._data[prop] = val
+            self._device_id = f"{MANUFACTURER}:{self._data[DEVICE_SERIAL_NUM]}"
             if test:
                 self._writer.close()
             else:
-                self._data[DEVICE_SYSTEM_STATE] = result["result"]
                 self._online = True
                 self._listener = asyncio.create_task(self.listener())
 

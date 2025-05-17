@@ -15,8 +15,8 @@ from .entity import BarcoEntity
 
 _LOGGER = logging.getLogger(__name__)
 
-SENSOR_LASER_ON = "laser_on"
-SENSOR_ILLUM_ON = "illumination_on"
+SENSOR_LASER_ON = "laser"
+SENSOR_ILLUM_ON = "illumination"
 
 SENSOR_MAP = {
     SENSOR_LASER_ON: DEVICE_LASER_ON,

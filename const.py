@@ -1,8 +1,7 @@
-"""Constants for the 2N Intercom integration."""
+"""Constants for the Barco integration."""
 
 DOMAIN = "Barco"
 MANUFACTURER = "Barco"
-MODEL = "Pulse Platform"
 EVENT = "barco_pulse_event"
 
 Barco_CONNECT_TIMEOUT = 20

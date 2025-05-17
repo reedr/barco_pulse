@@ -14,8 +14,8 @@ from .entity import BarcoEntity
 _LOGGER = logging.getLogger(__name__)
 
 REMOTE_DESC = RemoteEntityDescription(
-        key="projector",
-        translation_key="projector"
+    key="projector",
+    translation_key="Projector"
 )
 
 

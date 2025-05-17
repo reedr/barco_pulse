@@ -6,9 +6,9 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, MANUFACTURER, MODEL
+from .const import DOMAIN, MANUFACTURER
 from .coordinator import BarcoCoordinator
-from .device import BarcoDevice
+from .device import DEVICE_MODEL, BarcoDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class BarcoEntity(CoordinatorEntity[BarcoCoordinator]):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self.coordinator.device.device_id)},
             manufacturer=MANUFACTURER,
-            model=MODEL,
+            model=self.coordinator.device.data[DEVICE_MODEL],
             name=coordinator.device.device_id,
         )
 #        _LOGGER.error(f"new entity={entity} name={self._attr_name} unique_id={self.unique_id}")

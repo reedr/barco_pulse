@@ -36,7 +36,7 @@ SENSOR_INPUT_SIGNAL = "input_signal"
 SENSOR_OUTPUT_RES = "output_res"
 SENSOR_OUTPUT_HRES = "output_hres"
 SENSOR_OUTPUT_VRES = "output_vres"
-SENSOR_LASER_STATUS = "laser_status"
+SENSOR_LASER_STATUS = "laser_state"
 
 BARCO_SENSOR_MAP = {
     SENSOR_INLET_T: DEVICE_INLET_T,
