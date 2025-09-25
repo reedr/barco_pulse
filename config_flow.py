@@ -8,7 +8,7 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_HOST
+from homeassistant.const import CONF_HOST, CONF_MAC
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
@@ -19,7 +19,8 @@ _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_HOST): str
+        vol.Required(CONF_HOST): str,
+        vol.Required(CONF_MAC): str
     }
 )
 
@@ -29,7 +30,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     dev = BarcoDevice(
         hass,
-        data[CONF_HOST]
+        data[CONF_HOST],
+        data[CONF_MAC]
     )
     if await dev.test_connection():
         return {"title": "Projectors"}

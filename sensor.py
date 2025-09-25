@@ -23,6 +23,8 @@ from .device import (
     DEVICE_OUTPUT_HRES,
     DEVICE_OUTPUT_RES,
     DEVICE_OUTPUT_VRES,
+    DEVICE_SYSTEM_STATE,
+    DEVICE_SYSTEM_TARGETSTATE,
 )
 from .entity import BarcoEntity
 
@@ -37,6 +39,8 @@ SENSOR_OUTPUT_RES = "output_res"
 SENSOR_OUTPUT_HRES = "output_hres"
 SENSOR_OUTPUT_VRES = "output_vres"
 SENSOR_LASER_STATUS = "laser_state"
+SENSOR_SYSTEM_STATE = "system_state"
+SENSOR_SYSTEM_TARGETSTATE = "system_targetstate"
 
 BARCO_SENSOR_MAP = {
     SENSOR_INLET_T: DEVICE_INLET_T,
@@ -48,6 +52,8 @@ BARCO_SENSOR_MAP = {
     SENSOR_OUTPUT_VRES: DEVICE_OUTPUT_VRES,
     SENSOR_OUTPUT_HRES: DEVICE_OUTPUT_HRES,
     SENSOR_OUTPUT_RES: DEVICE_OUTPUT_RES,
+    SENSOR_SYSTEM_STATE: DEVICE_SYSTEM_STATE,
+    SENSOR_SYSTEM_TARGETSTATE: DEVICE_SYSTEM_TARGETSTATE,
 }
 
 SENSOR_DESCRIPTIONS = (
@@ -97,6 +103,16 @@ SENSOR_DESCRIPTIONS = (
     SensorEntityDescription(
         key=SENSOR_LASER_STATUS,
         translation_key=SENSOR_LASER_STATUS,
+        device_class=SensorDeviceClass.ENUM,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_SYSTEM_STATE,
+        translation_key=SENSOR_SYSTEM_STATE,
+        device_class=SensorDeviceClass.ENUM,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_SYSTEM_TARGETSTATE,
+        translation_key=SENSOR_SYSTEM_TARGETSTATE,
         device_class=SensorDeviceClass.ENUM,
     )
 )

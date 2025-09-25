@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+from wakeonlan import send_magic_packet
 
 from homeassistant.core import HomeAssistant, callback
 
@@ -10,7 +11,8 @@ from .const import MANUFACTURER, Barco_CONNECT_TIMEOUT, Barco_LOGIN_TIMEOUT, Bar
 
 _LOGGER = logging.getLogger(__name__)
 
-DEVICE_SYSTEM_STATE = "system.targetstate"
+DEVICE_SYSTEM_TARGETSTATE = "system.targetstate"
+DEVICE_SYSTEM_STATE = "system.state"
 DEVICE_INLET_T = "environment.temperature.inlet.value"
 DEVICE_OUTLET_T = "environment.temperature.outlet.value"
 DEVICE_LASER_STATUS = "illumination.sources.laser.status"
@@ -29,6 +31,7 @@ DEVICE_MODEL = "system.modelname"
 DEVICE_SERIAL_NUM = "system.serialnumber"
 
 PROPERTY_SUBS = [
+    DEVICE_SYSTEM_TARGETSTATE,
     DEVICE_SYSTEM_STATE,
     DEVICE_INLET_T,
     DEVICE_OUTLET_T,
@@ -43,11 +46,12 @@ PROPERTY_SUBS = [
 class BarcoDevice:
     """Represents a single Barco device."""
 
-    def __init__(self, hass: HomeAssistant, host: str) -> None:
+    def __init__(self, hass: HomeAssistant, host: str, mac: str) -> None:
         """Set up class."""
 
         self._hass = hass
         self._host = host
+        self._mac = mac
         self._device_id = None
         self._reader: asyncio.StreamReader
         self._writer: asyncio.StreamWriter
@@ -58,6 +62,7 @@ class BarcoDevice:
         self._request_id = None
         self._requests = {}
         self._data = {}
+        self._sleeping = True
 
     @property
     def device_id(self) -> str:
@@ -83,13 +88,31 @@ class BarcoDevice:
         """Return the sensor."""
         return self._data.get(name)
 
+    def _wake_on_lan(self) -> None:
+        """Wake the device via wake on lan."""
+        send_magic_packet(self._mac)
+
     async def open_connection(self, test: bool = False) -> bool:
         """Establish a connection."""
-        if self.online:
-            return True
+        if self._online:
+            if self._writer.is_closing():
+                _LOGGER.debug("Connection is closing")
+                try:
+                    await self._writer.wait_closed()
+                except Exception as exc:
+                    _LOGGER.debug("Error waiting for connection to close: %s", exc)
+
+                self._writer = None
+                self._reader = None
+                self._online = False
+                self._init_event.clear()
+                self._listener.cancel()
+                self._listener = None
+            else:
+                return True
 
         try:
-            _LOGGER.debug("Establish new connection")
+            _LOGGER.debug("Attempting to establish new connection")
             self._reader, self._writer = await asyncio.wait_for(
                 asyncio.open_connection(self._host, Barco_PORT),
                 timeout=Barco_CONNECT_TIMEOUT,
@@ -111,12 +134,15 @@ class BarcoDevice:
                 self._writer.close()
             else:
                 self._online = True
+                self._sleeping = False
                 self._listener = asyncio.create_task(self.listener())
 
-        except (TimeoutError, OSError, asyncio.IncompleteReadError) as err:
-            self._online = False
-            _LOGGER.error("Connect sequence error %s", err)
-            raise ConnectionError("Connect sequence error") from err
+        except Exception as err:
+            if self._sleeping:
+                _LOGGER.debug("Connection failed (while projector is sleeping): %s", err)
+            else:
+                _LOGGER.error("Connection failed: %s", err)
+            return False
 
         return True
 
@@ -146,10 +172,14 @@ class BarcoDevice:
 
     async def test_connection(self) -> bool:
         """Test a connect."""
+        await self._hass.async_add_executor_job(self._wake_on_lan)
         return await self.open_connection(test=True)
 
     async def send_command(self, method: str, params: str) -> int:
         """Make an API call."""
+        if method in ("system.poweron", "system.gotoready"):
+            await self._hass.async_add_executor_job(self._wake_on_lan)
+
         if not await self.open_connection():
             return False
         self.send_request(method, params)
@@ -157,12 +187,12 @@ class BarcoDevice:
 
     async def update_data(self) -> bool:
         """Stuff that has to be polled."""
-        return True
+        return await self.send_command("property.get", {"property": [DEVICE_SYSTEM_STATE]})
 
     @property
     def is_on(self) -> bool:
         """Is Projector on."""
-        return self._data.get(DEVICE_SYSTEM_STATE) in ["on", "conditioning"]
+        return self._data.get(DEVICE_SYSTEM_TARGETSTATE) in ["on", "conditioning"]
 
     async def turn_on(self) -> bool:
         """Turn on the power."""
@@ -183,36 +213,39 @@ class BarcoDevice:
     async def listener(self) -> None:
         """Listen for status updates from device."""
 
-        while True:
+        while self._online:
             try:
                 buf = await self._reader.read(4096)
                 if len(buf) == 0:
                     _LOGGER.error("Connection closed")
-                    break
-                resp = self.decode_response(buf)
-                if resp is None:
-                    continue
+                    self._reader.close()
+                    self._writer.close()
+                    self._online = False
+                else:
+                    resp = self.decode_response(buf)
+                    if resp is None:
+                        continue
 
-                req_id = resp.get("id")
-                if req_id is not None:
-                    req = self._requests[req_id]
-                    _LOGGER.debug("req_id=%d req=%s", req_id, req)
-                    if req is not None:
-                        del self._requests[req_id]
-                        if req["method"] == "property.subscribe":
-                            _LOGGER.debug("listener initialized")
-                            self._init_event.set()
-                        elif req["method"] == "property.get":
-                            self.property_update(resp.get("result"))
-                elif resp.get("method") == "property.changed":
-                    self.property_update(resp["params"]["property"][0])
+                    req_id = resp.get("id")
+                    if req_id is not None:
+                        req = self._requests[req_id]
+                        _LOGGER.debug("req_id=%d req=%s", req_id, req)
+                        if req is not None:
+                            del self._requests[req_id]
+                            if req["method"] == "property.subscribe":
+                                _LOGGER.debug("listener initialized")
+                                self._init_event.set()
+                            elif req["method"] == "property.get":
+                                self.property_update(resp.get("result"))
+                    elif resp.get("method") == "property.changed":
+                        self.property_update(resp["params"]["property"][0])
 
             except asyncio.IncompleteReadError as err:
                 _LOGGER.error("Connection lost: %s", err)
-                break
+                self._online = False
+                self._reader.close()
+                self._writer.close()
 
-        self._writer.close()
-        self._online = False
 
     def property_update(self, updates) -> None:
         """Update properties."""
@@ -239,6 +272,10 @@ class BarcoDevice:
                     self._data[n] = v
                     if n == DEVICE_SYSTEM_STATE:
                         _LOGGER.info("Projector state: %s", v)
+                    elif n == DEVICE_SYSTEM_TARGETSTATE:
+                        _LOGGER.info("Projector target state: %s", v)
+                        if v == "eco":
+                            self._sleeping = True
             if self._callback is not None:
                 self._callback(self._data)
 

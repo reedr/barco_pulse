@@ -1,5 +1,6 @@
 """Coordinator."""
 
+from datetime import timedelta
 import logging
 
 from homeassistant.config_entries import ConfigEntry
@@ -11,7 +12,6 @@ from .device import BarcoDevice
 _LOGGER = logging.getLogger(__name__)
 
 type BarcoConfigEntry = ConfigEntry[BarcoCoordinator]
-
 
 class BarcoCoordinator(DataUpdateCoordinator):
     """My custom coordinator."""
@@ -26,6 +26,7 @@ class BarcoCoordinator(DataUpdateCoordinator):
             # Name of the data. For logging purposes.
             name="Barco Coordinator",
             config_entry=config_entry,
+            update_interval=timedelta(seconds=30),
             setup_method=self.async_init,
             update_method=self.async_update,
             always_update=False,
@@ -39,12 +40,10 @@ class BarcoCoordinator(DataUpdateCoordinator):
 
     async def async_init(self):
         """Init the device."""
-        _LOGGER.debug("async_init")
         await self.device.async_init(self.update_callback)
 
     async def async_update(self):
         """Don't poll."""
-        _LOGGER.debug("async_update")
         await self.device.update_data()
         return self.device.data
 

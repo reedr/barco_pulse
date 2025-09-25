@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.const import CONF_HOST, Platform
+from homeassistant.const import CONF_HOST, CONF_MAC, Platform
 from homeassistant.core import HomeAssistant
 
 from .coordinator import BarcoConfigEntry, BarcoCoordinator
@@ -19,7 +19,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: BarcoConfigEntry) -> boo
 
     dev = BarcoDevice(
         hass,
-        entry.data[CONF_HOST]
+        entry.data[CONF_HOST],
+        entry.data[CONF_MAC],
     )
     coord = BarcoCoordinator(hass, entry, dev)
     entry.runtime_data = coord

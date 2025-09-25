@@ -52,7 +52,8 @@ class BarcoRemote(RemoteEntity, BarcoEntity):
 
     async def async_send_command(self, command: Iterable[str], **kwargs: Any) -> None:
         """Send command to device."""
-        await self.coordinator.device.send_command(command)
+        for c in command:
+            await self.coordinator.device.send_command(c, "[]")
 
     @callback
     def _handle_coordinator_update(self) -> None:
