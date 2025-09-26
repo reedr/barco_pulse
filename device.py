@@ -49,6 +49,7 @@ class BarcoDevice:
     def __init__(self, hass: HomeAssistant, host: str, mac: str) -> None:
         """Set up class."""
 
+        _LOGGER.info("Initialize Barco Pulse device (host=%s, mac=%s)", host, mac)
         self._hass = hass
         self._host = host
         self._mac = mac
@@ -90,11 +91,11 @@ class BarcoDevice:
 
     def _wake_on_lan(self) -> None:
         """Wake the device via wake on lan."""
-        _LOGGER.info("Sending wakeonlan magic packet to %s", self._mac)
-        send_magic_packet([self._mac])
+        send_magic_packet(self._mac)
 
     async def wakeup(self) -> None:
         """Wake up the device."""
+        _LOGGER.info("Attempting to wake projector at %s", self._mac)
         await self._hass.async_add_executor_job(self._wake_on_lan)
 
     async def check_connection(self, test: bool = False) -> None:

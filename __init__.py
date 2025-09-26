@@ -18,10 +18,12 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Barco device from a config entry."""
 
+    host = entry.options.get(CONF_HOST, entry.data.get(CONF_HOST))
+    mac = entry.options.get(CONF_MAC, entry.data.get(CONF_MAC))
     dev = BarcoDevice(
         hass,
-        entry.data.get(CONF_HOST),
-        entry.data.get(CONF_MAC),
+        host,
+        mac,
     )
     coord = BarcoCoordinator(hass, entry, dev)
     entry.runtime_data = coord
