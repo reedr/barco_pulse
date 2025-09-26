@@ -1,4 +1,4 @@
-"""Config flow for the Stewart Barco integration."""
+"""Config flow for the Barco Pulse integration."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow, ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_MAC
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import DOMAIN
@@ -24,14 +24,20 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     }
 )
 
+OPTIONS_USER_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_HOST): str,
+        vol.Required(CONF_MAC): str
+    }
+)
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
 
     dev = BarcoDevice(
         hass,
-        data[CONF_HOST],
-        data[CONF_MAC]
+        data.get(CONF_HOST),
+        data.get(CONF_MAC)
     )
     if await dev.test_connection():
         return {"title": "Projectors"}
@@ -39,10 +45,15 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     raise CannotConnect
 
 
-class ConfigFlow(ConfigFlow, domain=DOMAIN):
+class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
     """Handle a config flow."""
 
     VERSION = 1
+
+    @staticmethod
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        """Create the options flow."""
+        return OptionsFlowHandler()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -66,6 +77,25 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
+class OptionsFlowHandler(OptionsFlow):
+    """Handle a options flow for Barco Pulse."""
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Handle the initial step."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+
+        previous_data = {
+            CONF_HOST: self.config_entry.options.get(CONF_HOST, self.config_entry.data[CONF_HOST]),
+            CONF_MAC: self.config_entry.options.get(CONF_MAC, self.config_entry.data[CONF_MAC])
+        }
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(OPTIONS_USER_DATA_SCHEMA,
+                                                            previous_data),
+            errors=errors
+        )
 
 class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""

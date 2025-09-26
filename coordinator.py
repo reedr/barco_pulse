@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 import logging
+from typing import TYPE_CHECKING, Self
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -11,13 +12,11 @@ from .device import BarcoDevice
 
 _LOGGER = logging.getLogger(__name__)
 
-type BarcoConfigEntry = ConfigEntry[BarcoCoordinator]
-
 class BarcoCoordinator(DataUpdateCoordinator):
     """My custom coordinator."""
 
     def __init__(
-        self, hass: HomeAssistant, config_entry: BarcoConfigEntry, device: BarcoDevice
+        self, hass: HomeAssistant, config_entry: ConfigEntry[Self], device: BarcoDevice
     ) -> None:
         """Initialize my coordinator."""
         super().__init__(
@@ -51,3 +50,5 @@ class BarcoCoordinator(DataUpdateCoordinator):
     def update_callback(self, data):
         """Incoming data callback."""
         self.hass.add_job(self.async_set_updated_data, data)
+
+type BarcoConfigEntry = ConfigEntry[Self]
