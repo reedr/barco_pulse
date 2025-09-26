@@ -93,6 +93,10 @@ class BarcoDevice:
         _LOGGER.info("Sending wakeonlan magic packet to %s", self._mac)
         send_magic_packet([self._mac])
 
+    async def wakeup(self) -> None:
+        """Wake up the device."""
+        await self._hass.async_add_executor_job(self._wake_on_lan)
+
     async def check_connection(self, test: bool = False) -> None:
         """Establish a connection."""
         if self._online:
@@ -167,13 +171,13 @@ class BarcoDevice:
 
     async def test_connection(self) -> None:
         """Test a connect."""
-        await self._hass.async_add_executor_job(self._wake_on_lan)
+        self.wakeup()
         await self.check_connection(test=True)
 
     async def send_command(self, method: str, params: str) -> None:
         """Make an API call."""
         if method in ("system.poweron", "system.gotoready"):
-            await self._hass.async_add_executor_job(self._wake_on_lan)
+            self.wakeup()
 
         await self.check_connection()
         self.send_request(method, params)
@@ -198,6 +202,7 @@ class BarcoDevice:
 
     async def async_init(self, data_callback: callback) -> None:
         """Initialize the device."""
+        await self.wakeup()
         self._callback = data_callback
 
     async def listener(self) -> None:
