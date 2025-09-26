@@ -27,7 +27,7 @@ class BarcoCoordinator(DataUpdateCoordinator):
             config_entry=config_entry,
             update_interval=timedelta(seconds=30),
             setup_method=self.async_init,
-            update_method=self.async_update,
+            update_method=self._async_update_data,
             always_update=False,
         )
         self._device = device
@@ -41,9 +41,13 @@ class BarcoCoordinator(DataUpdateCoordinator):
         """Init the device."""
         await self.device.async_init(self.update_callback)
 
-    async def async_update(self):
-        """Don't poll."""
-        await self.device.update_data()
+    async def _async_update_data(self):
+        """Polling update."""
+        try:
+            await self.device.update_data()
+        except Exception as err:
+            _LOGGER.error("Error updating data: %s", err)
+            raise err
         return self.device.data
 
     @callback
