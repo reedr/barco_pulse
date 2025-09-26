@@ -46,7 +46,7 @@ class BarcoCoordinator(DataUpdateCoordinator):
         try:
             await self.device.update_data()
         except Exception as err:
-            _LOGGER.error("Data update failed: %s", err)
+            _LOGGER.info("Data update failed: %s", err)
             raise UpdateFailed(err) from err
         return self.device.data
 

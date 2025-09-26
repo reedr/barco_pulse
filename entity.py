@@ -46,11 +46,6 @@ class BarcoEntity(CoordinatorEntity[BarcoCoordinator]):
         return self.entity_description.key
 
     @property
-    def available(self) -> bool:
-        """Return online state."""
-        return self.coordinator.device.online
-
-    @property
     def device(self) -> BarcoDevice:
         """Return device."""
         return self.coordinator.device

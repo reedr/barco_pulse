@@ -46,6 +46,12 @@ async def async_setup_entry(hass: HomeAssistant,
 class BarcoBinarySensor(BinarySensorEntity, BarcoEntity):
     """BinarySensor class."""
 
+    @property
+    def available(self) -> bool:
+        """Return online state."""
+        dev_sensor = SENSOR_MAP[self.entity_description.key]
+        return self.coordinator.device.get_sensor_value(dev_sensor) is not None
+
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""

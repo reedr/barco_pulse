@@ -172,16 +172,16 @@ class BarcoDevice:
 
     async def test_connection(self) -> None:
         """Test a connect."""
-        self.wakeup()
+        await self.wakeup()
         await self.check_connection(test=True)
 
     async def send_command(self, method: str, params: str) -> None:
         """Make an API call."""
-        if method in ("system.poweron", "system.gotoready"):
-            self.wakeup()
-
-        await self.check_connection()
-        self.send_request(method, params)
+        if method == "system.gotoready":
+            await self.wakeup()
+        else:
+            await self.check_connection()
+            self.send_request(method, params)
 
     async def update_data(self) -> None:
         """Stuff that has to be polled."""

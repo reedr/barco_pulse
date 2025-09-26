@@ -42,6 +42,11 @@ class BarcoRemote(RemoteEntity, BarcoEntity):
         """Return True if entity is on."""
         return self.coordinator.device.is_on
 
+    @property
+    def available(self) -> bool:
+        """Return online state."""
+        return True
+
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the device on."""
         await self.coordinator.device.turn_on()
