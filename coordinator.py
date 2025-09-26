@@ -6,7 +6,7 @@ from typing import Self
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .device import BarcoDevice
 
@@ -47,7 +47,7 @@ class BarcoCoordinator(DataUpdateCoordinator):
             await self.device.update_data()
         except Exception as err:
             _LOGGER.error("Error updating data: %s", err)
-            raise err
+            raise UpdateFailed(err) from err
         return self.device.data
 
     @callback
