@@ -87,8 +87,8 @@ class OptionsFlowHandler(OptionsFlow):
             return self.async_create_entry(data=user_input)
 
         previous_data = {
-            CONF_HOST: self.config_entry.options.get(CONF_HOST, self.config_entry.data[CONF_HOST]),
-            CONF_MAC: self.config_entry.options.get(CONF_MAC, self.config_entry.data[CONF_MAC])
+            CONF_HOST: self.config_entry.options.get(CONF_HOST, self.config_entry.data.get(CONF_HOST)),
+            CONF_MAC: self.config_entry.options.get(CONF_MAC, self.config_entry.data.get(CONF_MAC))
         }
         return self.async_show_form(
             step_id="init",
