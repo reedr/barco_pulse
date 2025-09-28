@@ -7,7 +7,12 @@ from wakeonlan import send_magic_packet
 
 from homeassistant.core import HomeAssistant, callback
 
-from .const import MANUFACTURER, Barco_CONNECT_TIMEOUT, Barco_LOGIN_TIMEOUT, Barco_PORT
+from .const import (
+    MANUFACTURER,
+    BARCO_CONNECT_TIMEOUT,
+    BARCO_LOGIN_TIMEOUT,
+    BARCO_PORT,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -113,15 +118,15 @@ class BarcoDevice:
         try:
             _LOGGER.debug("Attempting to establish new connection")
             self._reader, self._writer = await asyncio.wait_for(
-                asyncio.open_connection(self._host, Barco_PORT),
-                timeout=Barco_CONNECT_TIMEOUT,
+                asyncio.open_connection(self._host, BARCO_PORT),
+                timeout=BARCO_CONNECT_TIMEOUT,
             )
             self._request_id = 1
             self.send_request(
                 "property.get", {"property": [DEVICE_MODEL, DEVICE_SERIAL_NUM]}
             )
             resp = await asyncio.wait_for(
-                self._reader.read(1000), timeout=Barco_LOGIN_TIMEOUT
+                self._reader.read(1000), timeout=BARCO_LOGIN_TIMEOUT
             )
             result = self.decode_response(resp)
             if result is None:
@@ -130,20 +135,17 @@ class BarcoDevice:
                 self._data[prop] = val
             self._device_id = f"{MANUFACTURER}:{self._data[DEVICE_SERIAL_NUM]}"
             if test:
-                self._writer.close()
+                self._connection_closed()
             else:
                 self._online = True
                 self._sleeping = False
                 self._listener = asyncio.create_task(self.listener())
                 self.send_request("property.subscribe", {"property": PROPERTY_SUBS})
-                await asyncio.wait_for(self._init_event.wait(), timeout=Barco_LOGIN_TIMEOUT)
+                await asyncio.wait_for(self._init_event.wait(), timeout=BARCO_LOGIN_TIMEOUT)
                 self.send_request("property.get", {"property": PROPERTY_SUBS})
 
         except Exception as err:
-            if self._sleeping:
-                _LOGGER.debug("Connection failed (while projector is sleeping): %s", err)
-            else:
-                _LOGGER.error("Connection failed: %s", err)
+            _LOGGER.debug("Connection failed: %s", err)
             raise err
 
     def send_request(self, method: str, params: dict) -> None:
@@ -177,11 +179,10 @@ class BarcoDevice:
 
     async def send_command(self, method: str, params: str) -> None:
         """Make an API call."""
-        if method == "system.gotoready":
+        if not self._online and method in ("system.gotoready", "system.poweron"):
             await self.wakeup()
-        else:
-            await self.check_connection()
-            self.send_request(method, params)
+        await self.check_connection()
+        self.send_request(method, params)
 
     async def update_data(self) -> None:
         """Stuff that has to be polled."""
@@ -250,11 +251,7 @@ class BarcoDevice:
         self._online = False
         self._init_event.clear()
         self._requests.clear()
-        state = self._data.get(DEVICE_SYSTEM_STATE)
-        targetstate = self._data.get(DEVICE_SYSTEM_TARGETSTATE)
         self._data.clear()
-        self._data[DEVICE_SYSTEM_STATE] = state
-        self._data[DEVICE_SYSTEM_TARGETSTATE] = targetstate
         if self._callback is not None:
             self._callback(self._data)
 
