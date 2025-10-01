@@ -34,6 +34,8 @@ DEVICE_ILLUM_STATE = "illumination.state"
 DEVICE_ILLUM_ON = "illumination"
 DEVICE_MODEL = "system.modelname"
 DEVICE_SERIAL_NUM = "system.serialnumber"
+DEVICE_INPUT_SOURCE = "image.window.main.source"
+DEVICE_INPUT_SOURCE_LIST = "image.source.list"
 
 PROPERTY_SUBS = [
     DEVICE_SYSTEM_TARGETSTATE,
@@ -45,7 +47,10 @@ PROPERTY_SUBS = [
     DEVICE_HDMI_SIGNAL,
     DEVICE_OUTPUT_SIZE,
     DEVICE_ILLUM_STATE,
+    DEVICE_INPUT_SOURCE,
 ]
+
+PROPERTY_INIT = PROPERTY_SUBS
 
 
 class BarcoDevice:
@@ -63,6 +68,7 @@ class BarcoDevice:
         self._writer: asyncio.StreamWriter
         self._init_event = asyncio.Event()
         self._online = False
+        self._poweron_pending = False
         self._callback = None
         self._listener = None
         self._request_id = None
@@ -142,7 +148,11 @@ class BarcoDevice:
                 self._listener = asyncio.create_task(self.listener())
                 self.send_request("property.subscribe", {"property": PROPERTY_SUBS})
                 await asyncio.wait_for(self._init_event.wait(), timeout=BARCO_LOGIN_TIMEOUT)
-                self.send_request("property.get", {"property": PROPERTY_SUBS})
+                self.send_request("property.get", {"property": PROPERTY_INIT})
+                self.send_request("image.source.list", "[]")
+                if self._poweron_pending:
+                    self.send_request("system.poweron", "[]")
+                    self._poweron_pending = False
 
         except Exception as err:
             _LOGGER.debug("Connection failed: %s", err)
@@ -181,8 +191,11 @@ class BarcoDevice:
         """Make an API call."""
         if not self._online and method in ("system.gotoready", "system.poweron"):
             await self.wakeup()
-        await self.check_connection()
-        self.send_request(method, params)
+            if method == "system.poweron":
+                self._poweron_pending = True
+        else:
+            await self.check_connection()
+            self.send_request(method, params)
 
     async def update_data(self) -> None:
         """Stuff that has to be polled."""
@@ -194,6 +207,16 @@ class BarcoDevice:
         """Is Projector on."""
         return self._data.get(DEVICE_SYSTEM_TARGETSTATE) in ["on", "conditioning"]
 
+    @property
+    def source_list(self) -> list[str]:
+        """Return source list."""
+        return self._data.get(DEVICE_INPUT_SOURCE_LIST)
+
+    @property
+    def source(self) -> str:
+        """Current source."""
+        return self._data.get(DEVICE_INPUT_SOURCE)
+
     async def turn_on(self) -> None:
         """Turn on the power."""
         await self.send_command("system.poweron", "[]")
@@ -201,6 +224,10 @@ class BarcoDevice:
     async def turn_off(self) -> None:
         """Turn on the power."""
         await self.send_command("system.poweroff", "[]")
+
+    async def select_source(self, source: str) -> None:
+        """Set the input."""
+        await self.send_command("property.set", {"property": DEVICE_INPUT_SOURCE, "value": source})
 
     async def async_init(self, data_callback: callback) -> None:
         """Initialize the device."""
@@ -233,6 +260,8 @@ class BarcoDevice:
                                     self._init_event.set()
                                 elif req["method"] == "property.get":
                                     self.property_update(resp.get("result"))
+                                elif req["method"] == "image.source.list":
+                                    self._data[DEVICE_INPUT_SOURCE_LIST] = resp.get("result")
                         elif resp.get("method") == "property.changed":
                             self.property_update(resp["params"]["property"][0])
 

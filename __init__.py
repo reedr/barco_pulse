@@ -11,7 +11,12 @@ from homeassistant.config_entries import ConfigEntry
 from .coordinator import BarcoCoordinator
 from .device import BarcoDevice
 
-_PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.REMOTE, Platform.SENSOR]
+_PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
+    Platform.REMOTE,
+    Platform.SENSOR,
+    Platform.MEDIA_PLAYER,
+]
 _LOGGER = logging.getLogger(__name__)
 
 
