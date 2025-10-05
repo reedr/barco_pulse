@@ -4,6 +4,8 @@ DOMAIN = "Barco"
 MANUFACTURER = "Barco"
 EVENT = "barco_pulse_event"
 
+CONF_PIN_CODE = "pin_code"
+
 BARCO_CONNECT_TIMEOUT = 120
 BARCO_LOGIN_TIMEOUT = 20
 BARCO_PORT = 9090

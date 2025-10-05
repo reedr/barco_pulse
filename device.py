@@ -56,13 +56,14 @@ PROPERTY_INIT = PROPERTY_SUBS
 class BarcoDevice:
     """Represents a single Barco device."""
 
-    def __init__(self, hass: HomeAssistant, host: str, mac: str) -> None:
+    def __init__(self, hass: HomeAssistant, host: str, mac: str, pin_code: str) -> None:
         """Set up class."""
 
         _LOGGER.info("Initialize Barco Pulse device (host=%s, mac=%s)", host, mac)
         self._hass = hass
         self._host = host
         self._mac = mac
+        self._pin_code = pin_code
         self._device_id = None
         self._reader: asyncio.StreamReader
         self._writer: asyncio.StreamWriter
@@ -146,6 +147,7 @@ class BarcoDevice:
                 self._online = True
                 self._sleeping = False
                 self._listener = asyncio.create_task(self.listener())
+                self.send_request("authenticate", {"code": int(self._pin_code)})
                 self.send_request("property.subscribe", {"property": PROPERTY_SUBS})
                 await asyncio.wait_for(self._init_event.wait(), timeout=BARCO_LOGIN_TIMEOUT)
                 self.send_request("property.get", {"property": PROPERTY_INIT})
@@ -231,7 +233,6 @@ class BarcoDevice:
 
     async def async_init(self, data_callback: callback) -> None:
         """Initialize the device."""
-        await self.wakeup()
         self._callback = data_callback
 
     async def listener(self) -> None:

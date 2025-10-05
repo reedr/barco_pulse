@@ -12,7 +12,7 @@ from homeassistant.const import CONF_HOST, CONF_MAC
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_PIN_CODE
 from .device import BarcoDevice
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,14 +20,16 @@ _LOGGER = logging.getLogger(__name__)
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
-        vol.Required(CONF_MAC): str
+        vol.Required(CONF_MAC): str,
+        vol.Required(CONF_PIN_CODE): str
     }
 )
 
 OPTIONS_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
-        vol.Required(CONF_MAC): str
+        vol.Required(CONF_MAC): str,
+        vol.Required(CONF_PIN_CODE): str
     }
 )
 
@@ -37,7 +39,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     dev = BarcoDevice(
         hass,
         data.get(CONF_HOST),
-        data.get(CONF_MAC)
+        data.get(CONF_MAC),
+        data.get(CONF_PIN_CODE)
     )
     if await dev.test_connection():
         return {"title": "Projectors"}
@@ -88,7 +91,8 @@ class OptionsFlowHandler(OptionsFlow):
 
         previous_data = {
             CONF_HOST: self.config_entry.options.get(CONF_HOST, self.config_entry.data.get(CONF_HOST)),
-            CONF_MAC: self.config_entry.options.get(CONF_MAC, self.config_entry.data.get(CONF_MAC))
+            CONF_MAC: self.config_entry.options.get(CONF_MAC, self.config_entry.data.get(CONF_MAC)),
+            CONF_PIN_CODE: self.config_entry.options.get(CONF_PIN_CODE, self.config_entry.data.get(CONF_PIN_CODE))
         }
         return self.async_show_form(
             step_id="init",
