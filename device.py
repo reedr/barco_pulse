@@ -62,9 +62,18 @@ class BarcoDevice:
         _LOGGER.info("Initialize Barco Pulse device (host=%s, mac=%s)", host, mac)
         self._hass = hass
         self._host = host
+        mac = mac.lower()
         self._mac = mac
+        if len(mac) == 17:
+            sep = mac[2]
+            self._mac8 = mac.replace(sep, '')
+        elif len(mac) == 14:
+            sep = mac[4]
+            self._mac8 = mac.replace(sep, '')
+        else:
+            raise ValueError('Incorrect MAC address format')
+        self._device_id = f"{MANUFACTURER}:{self._mac8}"
         self._pin_code = pin_code
-        self._device_id = None
         self._reader: asyncio.StreamReader
         self._writer: asyncio.StreamWriter
         self._init_event = asyncio.Event()
@@ -79,7 +88,7 @@ class BarcoDevice:
 
     @property
     def device_id(self) -> str:
-        """Use the mac."""
+        """Unique device identifier."""
         return self._device_id
 
     @property
@@ -130,17 +139,18 @@ class BarcoDevice:
             )
             self._request_id = 1
             self.send_request(
-                "property.get", {"property": [DEVICE_MODEL, DEVICE_SERIAL_NUM]}
+                "property.get", {"property": [DEVICE_MODEL, DEVICE_SERIAL_NUM, DEVICE_SYSTEM_STATE]}
             )
             resp = await asyncio.wait_for(
                 self._reader.read(1000), timeout=BARCO_LOGIN_TIMEOUT
             )
             result = self.decode_response(resp)
-            if result is None:
-                return False
+            ready_states = ["ready", "on", "conditioning"]
+            if result is None or result["result"].get(DEVICE_SYSTEM_STATE) not in ready_states:
+                self._connection_closed()
+                raise ConnectionError("Device not initialized")
             for prop, val in result["result"].items():
                 self._data[prop] = val
-            self._device_id = f"{MANUFACTURER}:{self._data[DEVICE_SERIAL_NUM]}"
             if test:
                 self._connection_closed()
             else:
@@ -192,6 +202,7 @@ class BarcoDevice:
     async def send_command(self, method: str, params: str) -> None:
         """Make an API call."""
         if not self._online and method in ("system.gotoready", "system.poweron"):
+            _LOGGER.warning("Projector is not online, waking up")
             await self.wakeup()
             if method == "system.poweron":
                 self._poweron_pending = True

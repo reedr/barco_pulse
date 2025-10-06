@@ -43,11 +43,16 @@ class BarcoCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Polling update."""
+
+        dev_is_online = self.device.online
         try:
             await self.device.update_data()
         except Exception as err:
-            _LOGGER.info("Data update failed: %s", err)
-            raise UpdateFailed(err) from err
+            if dev_is_online:
+                _LOGGER.error("Data update failed: %s", err)
+                raise UpdateFailed(err) from err
+            else:
+                _LOGGER.info("Projector may be asleep.  Ignoring: %s", err)
         return self.device.data
 
     @callback

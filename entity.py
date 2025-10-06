@@ -30,7 +30,6 @@ class BarcoEntity(CoordinatorEntity[BarcoCoordinator]):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self.coordinator.device.device_id)},
             manufacturer=MANUFACTURER,
-            model=self.coordinator.device.data[DEVICE_MODEL],
             name=coordinator.device.device_id,
         )
 #        _LOGGER.error(f"new entity={entity} name={self._attr_name} unique_id={self.unique_id}")
