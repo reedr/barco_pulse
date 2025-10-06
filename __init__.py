@@ -8,6 +8,7 @@ from homeassistant.const import CONF_HOST, CONF_MAC, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
+from .const import CONF_PIN_CODE
 from .coordinator import BarcoCoordinator
 from .device import BarcoDevice
 
@@ -25,10 +26,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     host = entry.options.get(CONF_HOST, entry.data.get(CONF_HOST))
     mac = entry.options.get(CONF_MAC, entry.data.get(CONF_MAC))
+    pin_code = entry.options.get(CONF_PIN_CODE, entry.data.get(CONF_PIN_CODE))
     dev = BarcoDevice(
         hass,
         host,
         mac,
+        pin_code,
     )
     coord = BarcoCoordinator(hass, entry, dev)
     entry.runtime_data = coord
