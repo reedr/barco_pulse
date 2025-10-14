@@ -196,7 +196,6 @@ class BarcoDevice:
 
     async def test_connection(self) -> None:
         """Test a connect."""
-        await self.wakeup()
         await self.check_connection(test=True)
 
     async def send_command(self, method: str, params: str) -> None:

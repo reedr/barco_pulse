@@ -42,11 +42,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         data.get(CONF_MAC),
         data.get(CONF_PIN_CODE)
     )
-    if await dev.test_connection():
-        return {"title": "Projectors"}
-
-    raise CannotConnect
-
+    await dev.test_connection()
+    return {"title": "Projector"}
 
 class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
     """Handle a config flow."""

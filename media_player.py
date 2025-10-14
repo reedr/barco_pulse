@@ -82,7 +82,7 @@ class BarcoMediaPlayer(MediaPlayerEntity, BarcoEntity):
     @property
     def state(self) -> MediaPlayerState:
         """Current state."""
-        return MediaPlayerState.ON if self.is_on else MediaPlayerState.STANDBY
+        return MediaPlayerState.ON if self.is_on else MediaPlayerState.IDLE
 
     @callback
     def _handle_coordinator_update(self) -> None:
