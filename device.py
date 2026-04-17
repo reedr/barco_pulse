@@ -85,6 +85,7 @@ class BarcoDevice:
         self._requests = {}
         self._data = {}
         self._sleeping = True
+        self._connection_tested = False
 
     @property
     def device_id(self) -> str:
@@ -95,6 +96,11 @@ class BarcoDevice:
     def online(self) -> bool:
         """Return status."""
         return self._online
+
+    @property
+    def connection_tested(self) -> bool:
+        """Return connection success."""
+        return self._connection_tested
 
     @property
     def data(self) -> dict:
@@ -153,6 +159,7 @@ class BarcoDevice:
                 self._data[prop] = val
             if test:
                 self._connection_closed()
+                self._connection_tested = True
             else:
                 self._online = True
                 self._sleeping = False
